@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Phishing Detector | Cyber Psyche</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.location.pathname === "/" || window.location.pathname.endsWith("/")) {
+                window.location.replace("PHIS.html");
+            }
+        });
+    </script>
+   <link rel="stylesheet" href="Styles.css">
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.body.style.display = "block";
+        });
+    </script>
+    <style>
+        body { display: none; }
+    </style>
+</head>
+<body>
+    <div class="hero container">
+        <h1 class="title">GMAIL PHISHING DETECTOR</h1>
+        <h2>by Cyber Psyche</h2>
+        <p>Your first line of defense against email phishing attacks.</p>
+    </div>
+    <div class="container">
+        <h2>Setup Instructions</h2>
+        <p><strong>In order to detect phishing, the user must set up the Gmail API.</strong></p>
+        <p>In order to detect phishing, please complete the setup below:</p>
+        <p><strong>Instructions for Gmail API Setup:</strong> <a href="Gmail API setup Walkthrough.docx" download style="color: #ffcc00; font-weight: bold; text-shadow: 0 0 8px rgba(255, 204, 0, 0.8);">Click here to download</a></p>
+        <label for="alert-email">Enter the Gmail account to receive phishing alerts:</label>
+        <input type="email" id="alert-email" placeholder="Enter Gmail account" required>
+        <p>Select which Gmail account you want to monitor for phishing threats:</p>
+        <button>Select Gmail Account</button>
+        <p><strong>Click link:</strong> Choose which Gmail account you would like to detect phishing in.</p>
+        <p><strong>Enter the Gmail account you would like to send an alert to.</strong></p>
+        
+        <div class="info-section">
+            <h3>Why Use This Tool?</h3>
+            <ul>
+                <li>Detects phishing attempts in real-time</li>
+                <li>Alerts you when suspicious emails are found</li>
+                <li>Protects your sensitive information</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
