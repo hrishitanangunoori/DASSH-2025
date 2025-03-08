@@ -1,0 +1,122 @@
+# This code will detect phishing in a gmail account chosen by the user and send an alert to another gmail account entered by the
+# user. The gmail account to send an alert to will be entered by the user on the webpage.
+
+# References:
+# 1. Chat gpt
+
+# In order to run this python file type the following into the terminal:
+# python3 GWebphishingRecPlusAlertWAI.py
+
+from flask import Flask, render_template, request, send_from_directory
+import os
+import pickle
+import re
+import requests
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+from urllib.parse import urlparse
+from base64 import urlsafe_b64decode
+import time
+from email.mime.text import MIMEText
+import base64
+from googleapiclient.errors import HttpError
+
+app = Flask(__name__)
+
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send']
+VT_API_KEY = os.getenv("VT_API_KEY")
+
+def get_file_path(file_name):
+    return os.path.join(os.getcwd(), file_name)
+
+def gmail_authenticate():
+    creds = None
+    token_path = get_file_path("token.pickle")
+    
+    if os.path.exists(token_path):
+        with open(token_path, "rb") as token:
+            creds = pickle.load(token)
+    
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(get_file_path('credentials.json'), SCOPES)
+            creds = flow.run_local_server(port=0)
+        
+        with open(token_path, "wb") as token:
+            pickle.dump(creds, token)
+
+    return build('gmail', 'v1', credentials=creds)
+
+service = gmail_authenticate()
+
+def search_messages(service, query):
+    result = service.users().messages().list(userId='me', q=query).execute()
+    return result.get('messages', [])
+
+def read_message(service, message):
+    msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
+    parts = msg['payload'].get("parts")
+    text_content = ""
+    if parts:
+        for part in parts:
+            if part['mimeType'] == 'text/plain':  
+                text_content = urlsafe_b64decode(part['body']['data']).decode("utf-8")
+                break
+    return {"text": text_content}
+
+def extract_links(text):
+    return re.findall(r'(https?://\S+|www\.\S+)', text)
+
+def check_phishing_links(links):
+    phishing_indicators = ["login", "verify", "update", "secure", "account", "bank", "paypal"]
+    for link in links:
+        parsed_url = urlparse(link)
+        if any(indicator in parsed_url.netloc or indicator in parsed_url.path for indicator in phishing_indicators):
+            return True
+    return False
+
+def analyze_email_for_phishing(email_data):
+    links = extract_links(email_data.get("text", ""))
+    return "Potential Phishing Detected" if check_phishing_links(links) else "No Phishing Detected"
+
+def create_message(sender, to, subject, body):
+    message = MIMEText(body)
+    message['to'] = to
+    message['from'] = sender
+    message['subject'] = subject
+    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    return {'raw': raw_message}
+
+def send_email(service, recipient_email, subject, body):
+    try:
+        message = create_message("me", recipient_email, subject, body)
+        service.users().messages().send(userId="me", body=message).execute()
+        print(f"Alert sent to {recipient_email}")
+    except HttpError as error:
+        print(f"Error sending email: {error}")
+
+def check_inbox_for_phishing(recipient_email):
+    messages = search_messages(service, "in:inbox")
+    for msg in messages:
+        email_data = read_message(service, msg)
+        result = analyze_email_for_phishing(email_data)
+        if "Potential Phishing Detected" in result:
+            send_email(service, recipient_email, "Phishing Alert", "Potential phishing detected in your Gmail account.")
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        recipient_email = request.form['email']
+        check_inbox_for_phishing(recipient_email)
+        return "Alert process completed. Check your email."
+    return render_template('PHIS.html')
+
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
+
+if __name__ == '_main_':
+    app.run(debug=True)
